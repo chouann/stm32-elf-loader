@@ -1,0 +1,4 @@
+build/
+*.o
+.mxproject
+Core/Inc/*_elf.h
