@@ -26,6 +26,20 @@
 
 #define STB_LOCAL 0
 #define STB_GLOBAL 1
+#define STB_WEAK 2
+
+#define STT_NOTYPE 0
+#define STT_OBJECT 1
+#define STT_FUNC 2
+#define STT_SECTION 3
+#define STT_FILE 4
+
+#define SHN_COMMON 0xFFF2
+#define SHT_ARM_ATTRIBUTES 0x70000003
+
+#define SHF_MERGE 0x10
+#define SHF_STRINGS 0x20
+#define SHF_INFO_LINK 0x40
 
 #define ELF32_ST_BIND(i) ((i) >> 4)
 #define ELF32_ST_TYPE(i) ((i) & 0xf)
