@@ -8,6 +8,7 @@ extern UART_HandleTypeDef huart2;
 
 void myprintf(const char *fmt, ...) {
 	static char buffer[256];
+	memset(buffer, 0, sizeof(buffer));
 	va_list args;
 	va_start(args, fmt);
 	vsnprintf(buffer, sizeof(buffer), fmt, args);

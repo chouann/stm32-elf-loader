@@ -124,7 +124,7 @@ ELF_ErrorTypeDef ELF_hexdump(char *filename, uint32_t max_bytes)
     uint32_t bytesread, i, offset = 0;
     uint8_t buffer[16];
     
-    myprintf("\n=== Hexdump: %s ===\n", filename);
+    myprintf("\r\n=== Hexdump: %s ===\r\n", filename);
     
     /* Get file size */
     res = f_stat(filename, &fno);
@@ -134,7 +134,7 @@ ELF_ErrorTypeDef ELF_hexdump(char *filename, uint32_t max_bytes)
     uint32_t file_size = fno.fsize;
     uint32_t bytes_to_read = (max_bytes == 0 || max_bytes > file_size) ? file_size : max_bytes;
     
-    myprintf("File size: %u bytes, dumping %u bytes\n\n", file_size, bytes_to_read);
+    myprintf("File size: %u bytes, dumping %u bytes\r\n\r\n", file_size, bytes_to_read);
     
     /* Open and read file */
     res = f_open(&file, filename, FA_READ);
@@ -170,13 +170,13 @@ ELF_ErrorTypeDef ELF_hexdump(char *filename, uint32_t max_bytes)
             char c = buffer[i];
             myprintf("%c", (c >= 32 && c < 127) ? c : '.');
         }
-        myprintf("|\n");
+        myprintf("|\r\n");
         
         offset += bytesread;
     }
     
     f_close(&file);
-    myprintf("=== End Hexdump ===\n\n");
+    myprintf("=== End Hexdump ===\r\n\r\n");
     
     return ELF_ERROR_NONE;
 }
@@ -191,54 +191,54 @@ ELF_ErrorTypeDef ELF_inspect(char *filename)
     uint32_t i, j, sym_count, rel_count;
     const char *shstrtab, *strtab;
     
-    myprintf("\n=== ELF File Inspection: %s ===\n\n", filename);
+    myprintf("\r\n=== ELF File Inspection: %s ===\r\n\r\n", filename);
     
     /* Open and read ELF header */
     if(ELF_Open(filename) != ELF_ERROR_NONE)
     {
-        myprintf("ERROR: Cannot open file\n");
+        myprintf("ERROR: Cannot open file\r\n");
         return ELF_ERROR_IO;
     }
     
     if(ELF_ReadHeader(&header) != ELF_ERROR_NONE)
     {
-        myprintf("ERROR: Invalid ELF file\n");
+        myprintf("ERROR: Invalid ELF file\r\n");
         return ELF_ERROR_INVALID_ELF;
     }
     
     /* Print ELF Header */
-    myprintf("========== %s ==========\n", filename);
-    myprintf("ELF Header:\n");
-    myprintf("  Magic:   %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+    myprintf("################### %s ###################\r\n", filename);
+    myprintf("ELF Header:\r\n");
+    myprintf("  Magic:   %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\r\n",
              header.e_ident[0], header.e_ident[1], header.e_ident[2], header.e_ident[3],
              header.e_ident[4], header.e_ident[5], header.e_ident[6], header.e_ident[7],
              header.e_ident[8], header.e_ident[9], header.e_ident[10], header.e_ident[11],
              header.e_ident[12], header.e_ident[13], header.e_ident[14], header.e_ident[15]);
-    myprintf("  Class:                             ELF%d\n", header.e_ident[4] == ELFCLASS32 ? 32 : 64);
-    myprintf("  Data:                              2's complement, %s\n", 
+    myprintf("  Class:                             ELF%d\r\n", header.e_ident[4] == ELFCLASS32 ? 32 : 64);
+    myprintf("  Data:                              2's complement, %s\r\n", 
              header.e_ident[5] == ELFDATA2LSB ? "little endian" : "big endian");
-    myprintf("  Version:                           1 (current)\n");
-    myprintf("  OS/ABI:                            UNIX - System V\n");
-    myprintf("  ABI Version:                       0\n");
-    myprintf("  Type:                              %s\n", 
+    myprintf("  Version:                           1 (current)\r\n");
+    myprintf("  OS/ABI:                            UNIX - System V\r\n");
+    myprintf("  ABI Version:                       0\r\n");
+    myprintf("  Type:                              %s\r\n", 
              header.e_type == ET_REL ? "REL (Relocatable file)" : "EXEC (Executable file)");
-    myprintf("  Machine:                           ARM\n");
-    myprintf("  Version:                           0x%x\n", header.e_version);
-    myprintf("  Entry point address:               0x%x\n", header.e_entry);
-    myprintf("  Start of program headers:          %u (bytes into file)\n", header.e_phoff);
-    myprintf("  Start of section headers:          %u (bytes into file)\n", header.e_shoff);
-    myprintf("  Flags:                             0x%x, Version5 EABI\n", header.e_flags);
-    myprintf("  Size of this header:               %u (bytes)\n", header.e_ehsize);
-    myprintf("  Size of program headers:           %u (bytes)\n", header.e_phentsize);
-    myprintf("  Number of program headers:         %u\n", header.e_phnum);
-    myprintf("  Size of section headers:           %u (bytes)\n", header.e_shentsize);
-    myprintf("  Number of section headers:         %u\n", header.e_shnum);
-    myprintf("  Section header string table index: %u\n", header.e_shstrndx);
+    myprintf("  Machine:                           ARM\r\n");
+    myprintf("  Version:                           0x%x\r\n", header.e_version);
+    myprintf("  Entry point address:               0x%x\r\n", header.e_entry);
+    myprintf("  Start of program headers:          %u (bytes into file)\r\n", header.e_phoff);
+    myprintf("  Start of section headers:          %u (bytes into file)\r\n", header.e_shoff);
+    myprintf("  Flags:                             0x%x, Version5 EABI\r\n", header.e_flags);
+    myprintf("  Size of this header:               %u (bytes)\r\n", header.e_ehsize);
+    myprintf("  Size of program headers:           %u (bytes)\r\n", header.e_phentsize);
+    myprintf("  Number of program headers:         %u\r\n", header.e_phnum);
+    myprintf("  Size of section headers:           %u (bytes)\r\n", header.e_shentsize);
+    myprintf("  Number of section headers:         %u\r\n", header.e_shnum);
+    myprintf("  Section header string table index: %u\r\n", header.e_shstrndx);
     
     /* Read section header string table */
     if(ELF_ReadSectionHeader(header.e_shstrndx, &shstrtab_shdr) != ELF_ERROR_NONE)
     {
-        myprintf("ERROR: Cannot read shstrtab\n");
+        myprintf("ERROR: Cannot read shstrtab\r\n");
         return ELF_ERROR_IO;
     }
     
@@ -255,8 +255,8 @@ ELF_ErrorTypeDef ELF_inspect(char *filename)
     shstrtab = (const char *)section_data;
     
     /* Print Section Headers */
-    myprintf("\nSection Headers:\n");
-    myprintf("  [Nr] Name              Type            Addr     Off    Size   ES Flg Lk Inf Al\n");
+    myprintf("\r\nSection Headers:\r\n");
+    myprintf("  [Nr] Name              Type            Addr     Off    Size   ES Flg Lk Inf Al\r\n");
     
     for(i = 0; i < header.e_shnum; i++)
     {
@@ -287,17 +287,17 @@ ELF_ErrorTypeDef ELF_inspect(char *filename)
         if(section.sh_flags & SHF_STRINGS)   strncat(flags, "S", sizeof(flags)-1);
         if(section.sh_flags & SHF_INFO_LINK) strncat(flags, "I", sizeof(flags)-1);
         
-        myprintf("  [%2u] %-16s %-15s %08x %06x %06x %2u %3s %2u %2u %2u\n",
+        myprintf("  [%2u] %-16s %-15s %08x %06x %06x %2u %3s %2u %2u %2u\r\n",
                  i, name, type_str, section.sh_addr, section.sh_offset, 
                  section.sh_size, section.sh_entsize, flags, section.sh_link, 
                  section.sh_info, section.sh_addralign);
     }
     
-    myprintf("Key to Flags:\n");
-    myprintf("  W (write), A (alloc), X (execute), M (merge), S (strings), I (info),\n");
-    myprintf("  L (link order), O (extra OS processing required), G (group), T (TLS),\n");
-    myprintf("  C (compressed), x (unknown), o (OS specific), E (exclude),\n");
-    myprintf("  D (mbind), y (purecode), p (processor specific)\n");
+    myprintf("Key to Flags:\r\n");
+    myprintf("  W (write), A (alloc), X (execute), M (merge), S (strings), I (info),\r\n");
+    myprintf("  L (link order), O (extra OS processing required), G (group), T (TLS),\r\n");
+    myprintf("  C (compressed), x (unknown), o (OS specific), E (exclude),\r\n");
+    myprintf("  D (mbind), y (purecode), p (processor specific)\r\n");
     
     /* Find and print symbol table */
     for(i = 0; i < header.e_shnum; i++)
@@ -328,8 +328,8 @@ ELF_ErrorTypeDef ELF_inspect(char *filename)
         ELF_ReadSectionData(&strtab_shdr, (uint8_t *)strtab, strtab_shdr.sh_size);
         
         /* Print symbol table */
-        myprintf("\nSymbol table '.symtab' contains %u entries:\n", sym_count);
-        myprintf("   Num:    Value  Size Type    Bind   Vis      Ndx Name\n");
+        myprintf("\r\nSymbol table '.symtab' contains %u entries:\r\n", sym_count);
+        myprintf("   Num:    Value  Size Type    Bind   Vis      Ndx Name\r\n");
         
         for(j = 0; j < sym_count; j++)
         {
@@ -397,7 +397,7 @@ ELF_ErrorTypeDef ELF_inspect(char *filename)
             else
                 myprintf("  0");
             
-            myprintf(" %s\n", sym_name);
+            myprintf(" %s\r\n", sym_name);
         }
         
         vPortFree(symbols);
@@ -422,9 +422,9 @@ ELF_ErrorTypeDef ELF_inspect(char *filename)
             break;
         ELF_ReadSectionData(&section, (uint8_t *)relocations, section.sh_size);
         
-        myprintf("\nRelocation section '%s' at offset 0x%x contains %u entries:\n", 
+        myprintf("\r\nRelocation section '%s' at offset 0x%x contains %u entries:\r\n", 
                  rel_name, section.sh_offset, rel_count);
-        myprintf(" Offset     Info    Type            Sym.Value  Sym. Name\n");
+        myprintf(" Offset     Info    Type            Sym.Value  Sym. Name\r\n");
         
         /* Get symbol and string table for relocations */
         ELF_ReadSectionHeader(section.sh_link, &symtab_shdr);
@@ -478,7 +478,7 @@ ELF_ErrorTypeDef ELF_inspect(char *filename)
                     else
                         myprintf("R_ARM_UNKNOWN   ");
                     
-                    myprintf("%08x   %s\n", sym_value, sym_name);
+                    myprintf("%08x   %s\r\n", sym_value, sym_name);
                 }
                 
                 vPortFree((void *)strtab);
@@ -491,7 +491,7 @@ ELF_ErrorTypeDef ELF_inspect(char *filename)
     
     vPortFree(section_data);
     ELF_Close();
-    myprintf("\n");
+    myprintf("\r\n");
     
     return ELF_ERROR_NONE;
 }
@@ -577,7 +577,7 @@ ELF_ErrorTypeDef ELF_ReadComplete(char *filename, uint8_t **elf_data, uint32_t *
     {
         return ELF_ERROR_INVALID_ELF;
     }        
-    myprintf("[ELF_ReadComplete]: try to read %s. File size = %d\n", filename, file_size); 
+    myprintf("[ELF_ReadComplete]: try to read %s. File size = %d\r\n", filename, file_size); 
     /* Allocate memory for complete file */
     buffer = pvPortMalloc(file_size);
     if(buffer == NULL)
@@ -622,7 +622,7 @@ ELF_ErrorTypeDef ELF_ReadComplete(char *filename, uint8_t **elf_data, uint32_t *
     *elf_data = buffer;
     *elf_size = file_size;        
     
-    myprintf("[ELF_ReadComplete]: Finish getting the elf data stored in elf_data.\n"); 
+    myprintf("[ELF_ReadComplete]: Finish getting the elf data stored in elf_data.\r\n"); 
     
     return ELF_ERROR_NONE;
 }
@@ -646,13 +646,13 @@ ELF_ErrorTypeDef ELF_write(char *filename, uint8_t *buffer, uint32_t size)
         return ELF_ERROR_IO;
     }
     
-    myprintf("[ELF_write]: Writing %u bytes to %s\n", size, filename);
+    myprintf("[ELF_write]: Writing %u bytes to %s\r\n", size, filename);
     
     /* Open file for writing (create or overwrite) */
     res = f_open(&file, filename, FA_CREATE_ALWAYS | FA_WRITE);
     if(res != FR_OK)
     {
-        myprintf("[ELF_write]: Failed to open file for writing\n");
+        myprintf("[ELF_write]: Failed to open file for writing\r\n");
         return ELF_ERROR_IO;
     }
     
@@ -662,11 +662,11 @@ ELF_ErrorTypeDef ELF_write(char *filename, uint8_t *buffer, uint32_t size)
     
     if(res != FR_OK || byteswritten != size)
     {
-        myprintf("[ELF_write]: Failed to write data. Written: %u/%u bytes\n", byteswritten, size);
+        myprintf("[ELF_write]: Failed to write data. Written: %u/%u bytes\r\n", byteswritten, size);
         return ELF_ERROR_IO;
     }
     
-    myprintf("[ELF_write]: Successfully wrote %u bytes to %s\n", byteswritten, filename);
+    myprintf("[ELF_write]: Successfully wrote %u bytes to %s\r\n", byteswritten, filename);
     
     return ELF_ERROR_NONE;
 }

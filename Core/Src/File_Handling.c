@@ -79,11 +79,11 @@ FRESULT ELF_StorageParse(void)
   DIR dir;
   char *fn;
 
-  myprintf("Parsing SD card for ELF files...\n");
+  myprintf("Parsing SD card for ELF files...\r\n");
 
   res = f_opendir(&dir, "");
   if (res != FR_OK) {
-      myprintf("Failed to open root directory! Error: %d\n", res);
+      myprintf("Failed to open root directory! Error: %d\r\n", res);
       return res;
   }
   FileList.ptr = 0;
@@ -103,7 +103,7 @@ FRESULT ELF_StorageParse(void)
       }
 
       fn = fno.fname;
-      myprintf("Found file: %s (dir=%d)\n", fn, (fno.fattrib & AM_DIR) ? 1 : 0);
+      myprintf("Found file: %s (dir=%d)\r\n", fn, (fno.fattrib & AM_DIR) ? 1 : 0);
 
       if(FileList.ptr < FILEMGR_LIST_DEPDTH)
       {
@@ -116,12 +116,12 @@ FRESULT ELF_StorageParse(void)
             {
               strncpy((char *)FileList.file[FileList.ptr].name, (char *)fn, FILEMGR_FILE_NAME_SIZE);
               FileList.file[FileList.ptr].type = FILETYPE_ELF;
-              myprintf("  -> Recording as valid ELF: %s\n", fn);
+              myprintf("  -> Recording as valid ELF: %s\r\n", fn);
               FileList.ptr++;
             }
             else
             {
-              myprintf("  -> Invalid ELF (bad magic): %s\n", fn);
+              myprintf("  -> Invalid ELF (bad magic): %s\r\n", fn);
             }
           }
         }
@@ -130,7 +130,7 @@ FRESULT ELF_StorageParse(void)
   }
   NumObs = FileList.ptr;
   f_closedir(&dir);
-  myprintf("Total valid ELF files found: %d\n", NumObs);
+  myprintf("Total valid ELF files found: %d\r\n", NumObs);
   return res;
 }
 
@@ -145,9 +145,9 @@ void Mount_SD (void)
 	fresult = f_mount(&fs, "", 1);
 
 	if (fresult != FR_OK) {
-	    myprintf("SD card mount failed with error code: %d\n", fresult);
+	    myprintf("SD card mount failed with error code: %d\r\r\n", fresult);
 	} else {
-	    myprintf("SD card mounted Successfully.!\n");
+	    myprintf("SD card mounted Successfully.!\r\n");
 	}
 }
 
@@ -156,8 +156,8 @@ void Unmount_SD (void)
 	fresult = f_mount(NULL, "", 1);
 
 	if (fresult != FR_OK) {
-		myprintf("SD card unmount failed with error code: %d\n", fresult);
+		myprintf("SD card unmount failed with error code: %d\r\n", fresult);
 	} else {
-		myprintf("SD card unmounted Successfully.!\n");
+		myprintf("SD card unmounted Successfully.!\r\n");
 	}
 }

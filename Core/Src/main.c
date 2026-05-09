@@ -79,6 +79,10 @@ void StartDefaultTask(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+/**
+ * @brief Task: Load and execute blink_green and blink_orange ELF programs from memory.
+ * Creates two tasks, runs them for 3, 6 seconds each, then terminates.
+ */
 static void test_task_manager(void *args)
 {
     (void) args;
@@ -117,6 +121,10 @@ static void test_task_manager(void *args)
 
     vTaskDelete(NULL);
 }
+/**
+ * @brief Task: Test SD card mount and basic connectivity.
+ * Attempts to mount the SD card and reports status via UART and LED indicators.
+ */
 void SDCARD_Test(void *pvParameters){
 	myprintf("SDCARDTest START!\r\n");
 	FATFS fs;
@@ -130,21 +138,77 @@ void SDCARD_Test(void *pvParameters){
 	    myprintf("SD mounted!\r\n");
 	}
 }
+/**
+ * @brief Task: Validate that blink_Green.o on SD card matches the original embedded file.
+ * Performs byte-by-byte comparison and reports any mismatches with exact locations.
+ */
+void validate_SDCardFile(void *pvParameters)
+{
+    char filename[] = "blink_green.o";
+    myprintf("\r\n=== Starting ELF Validation ===\r\n");
+    myprintf("[validate_SDCardFile]: Validating %s on SD card...\r\n", filename);
+    
+    /* Check if file exists */
+    FILINFO fno;
+    FRESULT res = f_stat(filename, &fno);
+    if(res != FR_OK)
+    {
+        myprintf("ERROR [validate_SDCardFile]: File does not exist! Error: %d\r\n", res);
+        HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
+        vTaskDelete(NULL);
+    }
+    
+    uint8_t *fdata;
+    uint32_t fsize;
+    if(ELF_ReadComplete(filename, &fdata, &fsize) != ELF_ERROR_NONE)
+    {
+        myprintf("ERROR [validate_SDCardFile]: ELF_ReadComplete failed\r\n");
+        HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
+        vTaskDelete(NULL);
+    }
+    
+    if(fsize != blink_green_elf_len || fsize != sizeof(blink_green_elf))
+    {
+        myprintf("ERROR [validate_SDCardFile]: File size mismatch! SD size=%u, expected=%u\r\n", fsize, blink_green_elf_len);
+        HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
+        vTaskDelete(NULL);
+    }
+    
+    int i = 0;
+    while(i < fsize)
+    {
+        if(fdata[i] != blink_green_elf[i])
+        {
+            myprintf("ERROR [validate_SDCardFile]: Data mismatch at byte %d! SD=0x%02X, expected=0x%02X\r\n", i, fdata[i], blink_green_elf[i]);
+            HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
+            vTaskDelete(NULL);
+        }
+        i++;
+    }
+    
+    myprintf("[validate_SDCardFile]: The file %s is the same as original one. Validation Success!\r\n", filename);
+    myprintf("=== ELF Validation complete ===\r\n");
+    vTaskDelete(NULL);
+}
+/**
+ * @brief Task: Read and inspect ELF file structure from SD card.
+ * Performs hexdump of the entire file and parses ELF header information.
+ */
 void ELF_read_Test(void *pvParameters)
 {
     uint16_t elf_count;
     
-    myprintf("\n=== Starting ELF Inspection Test ===\n");
+    myprintf("\r\n=== Starting ELF Inspection Test ===\r\n");
     
     /* Get number of ELF files on SD card */
     elf_count = ELF_GetelfObjectNumber();
-    myprintf("Found %u ELF files on SD card\n", elf_count);
+    myprintf("Found %u ELF files on SD card\r\n", elf_count);
     
     /* Inspect first ELF file if available */
     if(elf_count > 0)
     {
         char *filename = (char *)FileList.file[0].name;
-        myprintf("Inspecting first ELF file: %s\n\n", filename);
+        myprintf("Inspecting first ELF file: %s\r\n\r\n", filename);
         
         /* Print raw hexdump of entire file */
         ELF_hexdump(filename, 0);
@@ -153,19 +217,23 @@ void ELF_read_Test(void *pvParameters)
         ELF_ErrorTypeDef err = ELF_inspect(filename);
         if(err != ELF_ERROR_NONE)
         {
-            myprintf("ERROR: ELF_inspect() failed with error code %d\n", err);
+            myprintf("ERROR: ELF_inspect() failed with error code %d\r\n", err);
             HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);  // Red LED = error
         }
     }
     else
     {
-        myprintf("ERROR: No ELF files found on SD card!\n");
+        myprintf("ERROR: No ELF files found on SD card!\r\n");
         HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);  // Red LED = error
     }
     
-    myprintf("=== ELF Inspection Test Complete ===\n\n");
+    myprintf("=== ELF Inspection Test Complete ===\r\n\r\n");
     vTaskDelete(NULL);
 }
+/**
+ * @brief Task: Read ELF file from SD card and write a backup copy.
+ * Reads the first ELF file into buffer, then writes it as a new file on SD card.
+ */
 void ELF_write_Test(void *pvParameters)
 {
     uint16_t elf_count;
@@ -173,32 +241,32 @@ void ELF_write_Test(void *pvParameters)
     uint32_t file_size;
     ELF_ErrorTypeDef err;
     
-    myprintf("\n=== Starting ELF Write Test ===\n");
+    myprintf("\r\n=== Starting ELF Write Test ===\r\n");
     
     /* Get number of ELF files on SD card */
     elf_count = ELF_GetelfObjectNumber();
-    myprintf("Found %u ELF files on SD card\n", elf_count);
+    myprintf("Found %u ELF files on SD card\r\n", elf_count);
     
     if(elf_count < 1)
     {
-        myprintf("ERROR: No ELF files found on SD card!\n");
+        myprintf("ERROR: No ELF files found on SD card!\r\n");
         HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);  // Red LED = error
         vTaskDelete(NULL);
     }
     
     /* Read first ELF file */
     char *filename = (char *)FileList.file[0].name;
-    myprintf("Reading ELF file: %s\n", filename);
+    myprintf("Reading ELF file: %s\r\n", filename);
     
     err = ELF_ReadComplete(filename, &file_data, &file_size);
     if(err != ELF_ERROR_NONE)
     {
-        myprintf("ERROR: ELF_ReadComplete() failed with error code %d\n", err);
+        myprintf("ERROR: ELF_ReadComplete() failed with error code %d\r\n", err);
         HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);  // Red LED = error
         vTaskDelete(NULL);
     }
     
-    myprintf("Read %u bytes from %s\n", file_size, filename);
+    myprintf("Read %u bytes from %s\r\n", file_size, filename);
     
     /* Write buffer to new file without .o extension */
     char output_filename[64];
@@ -209,36 +277,40 @@ void ELF_write_Test(void *pvParameters)
         snprintf(output_filename, sizeof(output_filename), "copy_%s", filename);
     }
     
-    myprintf("Writing copy to: %s\n", output_filename);
+    myprintf("Writing copy to: %s\r\n", output_filename);
     err = ELF_write(output_filename, file_data, file_size);
     
     if(err != ELF_ERROR_NONE)
     {
-        myprintf("ERROR: ELF_write() failed with error code %d\n", err);
+        myprintf("ERROR: ELF_write() failed with error code %d\r\n", err);
         HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);  // Red LED = error
         vPortFree(file_data);
         vTaskDelete(NULL);
     }
     
-    myprintf("Successfully wrote %u bytes to %s\n", file_size, output_filename);
-    myprintf("ELF Write Test Complete - SUCCESS\n\n");
+    myprintf("Successfully wrote %u bytes to %s\r\n", file_size, output_filename);
+    myprintf("ELF Write Test Complete - SUCCESS\r\n\r\n");
     
     vPortFree(file_data);
     HAL_GPIO_WritePin(GPIOD, LD6_Pin, GPIO_PIN_SET);  // Green LED = success
     
     vTaskDelete(NULL);
 }
+/**
+ * @brief Task: Load and execute ELF programs directly from SD card.
+ * Reads blink_green.o and blink_orange.o from SD, loads them into memory, and runs as FreeRTOS tasks.
+ */
 void test_task_manager_fromSD(void *args)
 {
     /* Files order in SD card: hello.o, blink_green.o, blink_orange.o (Adjus this function refer to the data in SD card later, maybe change it into loop)*/
     (void) args;
-    myprintf("[test_task_manager_fromSD] Running...\n");
+    myprintf("[test_task_manager_fromSD] Running...\r\n");
     
     /* Check if at least 2 ELF files exist on SD card */
     uint16_t elf_count = ELF_GetelfObjectNumber();
     if(elf_count < 2)
     {
-        myprintf("ERROR [test_task_manager_fromSD]: Need at least 2 ELF files on SD card\n");
+        myprintf("ERROR [test_task_manager_fromSD]: Need at least 2 ELF files on SD card\r\n");
         HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
         vTaskDelete(NULL);
     }
@@ -246,21 +318,21 @@ void test_task_manager_fromSD(void *args)
     /* Load blink_green.o (second-to-last file) */
     uint32_t green_idx = elf_count - 2;
     char *green_filename = (char *)FileList.file[green_idx].name;
-    myprintf("Loading blink_green from SD card: %s\n", green_filename);
+    myprintf("Loading blink_green from SD card: %s\r\n", green_filename);
     
     uint8_t *green_data;
     uint32_t green_size;
     if(ELF_ReadComplete(green_filename, &green_data, &green_size) != ELF_ERROR_NONE)
     {
-        myprintf("ERROR [test_task_manager_fromSD]: ELF_ReadComplete failed for green\n");
+        myprintf("ERROR [test_task_manager_fromSD]: ELF_ReadComplete failed for green\r\n");
         HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
         vTaskDelete(NULL);
     }
     
-    myprintf("Loaded %u bytes, loading green into memory...\n", green_size);
+    myprintf("Loaded %u bytes, loading green into memory...\r\n", green_size);
     ElfLoaderResult_t r_green = elf_loader_load((uint8_t *)green_data, green_size);
     if (r_green.entry == NULL) {
-        myprintf("ERROR [test_task_manager_fromSD]: elf_loader_load failed for green\n");
+        myprintf("ERROR [test_task_manager_fromSD]: elf_loader_load failed for green\r\n");
         HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
         vPortFree(green_data);
         vTaskDelete(NULL);
@@ -268,33 +340,33 @@ void test_task_manager_fromSD(void *args)
     
     int id_green = task_manager_create("green", &r_green);
     if (id_green < 0) {
-        myprintf("ERROR [test_task_manager_fromSD]: task_manager_create failed for green\n");
+        myprintf("ERROR [test_task_manager_fromSD]: task_manager_create failed for green\r\n");
         HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
         vPortFree(green_data);
         vTaskDelete(NULL);
     }
     
-    myprintf("Green task created successfully (ID=%d)\n", id_green);
+    myprintf("Green task created successfully (ID=%d)\r\n", id_green);
     
     /* Load blink_orange.o (last file) */
     uint32_t orange_idx = elf_count - 1;
     char *orange_filename = (char *)FileList.file[orange_idx].name;
-    myprintf("Loading blink_orange from SD card: %s\n", orange_filename);
+    myprintf("Loading blink_orange from SD card: %s\r\n", orange_filename);
     
     uint8_t *orange_data;
     uint32_t orange_size;
     if(ELF_ReadComplete(orange_filename, &orange_data, &orange_size) != ELF_ERROR_NONE)
     {
-        myprintf("ERROR [test_task_manager_fromSD]: ELF_ReadComplete failed for orange\n");
+        myprintf("ERROR [test_task_manager_fromSD]: ELF_ReadComplete failed for orange\r\n");
         HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
         vPortFree(green_data);
         vTaskDelete(NULL);
     }
     
-    myprintf("Loaded %u bytes, loading orange into memory...\n", orange_size);
+    myprintf("Loaded %u bytes, loading orange into memory...\r\n", orange_size);
     ElfLoaderResult_t r_orange = elf_loader_load((uint8_t *)orange_data, orange_size);
     if (r_orange.entry == NULL) {
-        myprintf("ERROR [test_task_manager_fromSD]: elf_loader_load failed for orange\n");
+        myprintf("ERROR [test_task_manager_fromSD]: elf_loader_load failed for orange\r\n");
         HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
         vPortFree(green_data);
         vPortFree(orange_data);
@@ -303,32 +375,32 @@ void test_task_manager_fromSD(void *args)
     
     int id_orange = task_manager_create("orange", &r_orange);
     if (id_orange < 0) {
-        myprintf("ERROR [test_task_manager_fromSD]: task_manager_create failed for orange\n");
+        myprintf("ERROR [test_task_manager_fromSD]: task_manager_create failed for orange\r\n");
         HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
         vPortFree(green_data);
         vPortFree(orange_data);
         vTaskDelete(NULL);
     }
     
-    myprintf("Orange task created successfully (ID=%d)\n", id_orange);
-    myprintf("Both SD tasks running for 3 seconds...\n");
+    myprintf("Orange task created successfully (ID=%d)\r\n", id_orange);
+    myprintf("Both SD tasks running for 3 seconds...\r\n");
     
     /* Let tasks run */
     vTaskDelay(pdMS_TO_TICKS(3000));
     
     /* Kill green task */
-    myprintf("Killing green task...\n");
+    myprintf("Killing green task...\r\n");
     task_manager_kill(id_green);
     vPortFree(green_data);
     
     vTaskDelay(pdMS_TO_TICKS(3000));
     
     /* Kill orange task */
-    myprintf("Killing orange task...\n");
+    myprintf("Killing orange task...\r\n");
     task_manager_kill(id_orange);
     vPortFree(orange_data);
     
-    myprintf("SD task test complete\n");
+    myprintf("SD task test complete\r\n");
     HAL_GPIO_WritePin(GPIOD, LD6_Pin, GPIO_PIN_SET);
     
     vTaskDelete(NULL);
@@ -397,12 +469,14 @@ int main(void)
   /* USER CODE BEGIN RTOS_THREADS */
     kernel_api_init();
     Mount_SD();
-    xTaskCreate(ELF_read_Test, "elf_read_test", 1024, NULL, 3, NULL);
-    // xTaskCreate(ELF_write_Test, "elf_write_test", 1024, NULL, 4, NULL);
+    xTaskCreate(validate_SDCardFile, "validate_SDCardFile", 1024, NULL, 5, NULL); // test if elf data didn't change in SD card.
+    xTaskCreate(ELF_read_Test, "elf_read_test", 1024, NULL, 3, NULL); // do readelf and hexdump to elf files in SD card
+    // write test, use when uncomment it.
+    // xTaskCreate(ELF_write_Test, "elf_write_test", 1024, NULL, 4, NULL); // read an elf to buffer -> write a new file stored in SD card.
 #if ELFFROMSD
-    xTaskCreate(test_task_manager_fromSD, "testFromSD", 512, NULL, 2, NULL);
+    xTaskCreate(test_task_manager_fromSD, "testFromSD", 512, NULL, 2, NULL); // load the new program reading from SD card
 #else
-    // xTaskCreate(test_task_manager, "test", 512, NULL, 2, NULL);
+    // xTaskCreate(test_task_manager, "test", 512, NULL, 2, NULL); // load new program from .h
 #endif
     // xTaskCreate(SDCARD_Test, "SDCARD_Test", 256, NULL, 1, NULL);
   /* USER CODE END RTOS_THREADS */
