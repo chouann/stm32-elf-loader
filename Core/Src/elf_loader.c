@@ -1,53 +1,71 @@
-#include <assert.h>
 #include <string.h>
-
-#include "stm32f4xx.h"
 
 #include "elf.h"
 #include "elf_loader.h"
-#include "kernel_api.h"
 
 #define MAX_SECTIONS 32
 #define SECTION_NOT_LOADED 0xFFFFFFFF
+#define ALIGN_UP(val, align) (((val) + (align) - 1) & ~((align) - 1))
 
 typedef struct {
     const Elf32_Ehdr *ehdr;
     const Elf32_Shdr *shdrs;
-    const char *shstrtab;
     const uint8_t *elf_data;
     uint32_t elf_size;
     uint8_t *loaded_mem;
     uint32_t loaded_size;
     uint32_t base_addr;
     uint32_t section_offsets[MAX_SECTIONS];
-} LoaderState_t;
+    symbol_resolver_t resolver;
+} loader_state_t;
 
-static int loader_validate(LoaderState_t *s)
+static const char *status_strings[] = {
+    [ELF_OK] = "ok",
+    [ELF_ERR_NULL_ARG] = "null argument",
+    [ELF_ERR_TOO_SMALL] = "file too small",
+    [ELF_ERR_BAD_MAGIC] = "bad ELF magic",
+    [ELF_ERR_BAD_CLASS] = "not ELF32",
+    [ELF_ERR_BAD_ENDIAN] = "not little-endian",
+    [ELF_ERR_BAD_TYPE] = "not ET_REL",
+    [ELF_ERR_BAD_MACHINE] = "not ARM",
+    [ELF_ERR_NO_MEMORY] = "out of memory",
+    [ELF_ERR_UNRESOLVED_SYMBOL] = "unresolved symbol",
+    [ELF_ERR_UNSUPPORTED_RELOC] = "unsupported relocation",
+    [ELF_ERR_NO_ENTRY] = "app_main not found",
+};
+
+const char *elf_status_str(elf_status_t status)
+{
+    if (status < sizeof(status_strings) / sizeof(status_strings[0]) &&
+        status_strings[status])
+        return status_strings[status];
+    return "unknown error";
+}
+
+static elf_status_t loader_validate(loader_state_t *s)
 {
     if (s->elf_size < sizeof(Elf32_Ehdr))
-        return -1;
+        return ELF_ERR_TOO_SMALL;
 
     const Elf32_Ehdr *ehdr = (const Elf32_Ehdr *) s->elf_data;
 
     if (memcmp(ehdr->e_ident, ELF_MAGIC, ELF_MAGIC_SIZE) != 0)
-        return -1;
+        return ELF_ERR_BAD_MAGIC;
     if (ehdr->e_ident[4] != ELFCLASS32)
-        return -1;
+        return ELF_ERR_BAD_CLASS;
     if (ehdr->e_ident[5] != ELFDATA2LSB)
-        return -1;
+        return ELF_ERR_BAD_ENDIAN;
     if (ehdr->e_type != ET_REL)
-        return -1;
+        return ELF_ERR_BAD_TYPE;
     if (ehdr->e_machine != EM_ARM)
-        return -1;
+        return ELF_ERR_BAD_MACHINE;
 
     s->ehdr = ehdr;
     s->shdrs = (const Elf32_Shdr *) (s->elf_data + ehdr->e_shoff);
-    s->shstrtab =
-        (const char *) (s->elf_data + s->shdrs[ehdr->e_shstrndx].sh_offset);
-    return 0;
+    return ELF_OK;
 }
 
-static int loader_load_sections(LoaderState_t *s)
+static elf_status_t loader_load_sections(loader_state_t *s)
 {
     uint32_t total = 0;
 
@@ -59,7 +77,7 @@ static int loader_load_sections(LoaderState_t *s)
 
         uint32_t align = s->shdrs[i].sh_addralign;
         if (align > 1)
-            total = (total + align - 1) & ~(align - 1);
+            total = ALIGN_UP(total, align);
 
         s->section_offsets[i] = total;
         total += s->shdrs[i].sh_size;
@@ -67,7 +85,7 @@ static int loader_load_sections(LoaderState_t *s)
 
     s->loaded_mem = pvPortMalloc(total);
     if (!s->loaded_mem)
-        return -1;
+        return ELF_ERR_NO_MEMORY;
 
     s->loaded_size = total;
     s->base_addr = (uint32_t) s->loaded_mem;
@@ -85,10 +103,10 @@ static int loader_load_sections(LoaderState_t *s)
         }
     }
 
-    return 0;
+    return ELF_OK;
 }
 
-static int loader_resolve_and_relocate(LoaderState_t *s)
+static elf_status_t loader_resolve_and_relocate(loader_state_t *s)
 {
     for (int i = 0; i < s->ehdr->e_shnum; i++) {
         if (s->shdrs[i].sh_type != SHT_REL)
@@ -113,16 +131,16 @@ static int loader_resolve_and_relocate(LoaderState_t *s)
 
         uint32_t *sym_addrs = pvPortMalloc(sym_count * sizeof(uint32_t));
         if (!sym_addrs)
-            return -1;
+            return ELF_ERR_NO_MEMORY;
         memset(sym_addrs, 0, sym_count * sizeof(uint32_t));
 
         for (uint32_t j = 1; j < sym_count; j++) {
             if (syms[j].st_shndx == SHN_UNDEF) {
                 const char *name = strtab + syms[j].st_name;
-                uint32_t addr = kernel_symbol_lookup(name);
+                uint32_t addr = s->resolver(name);
                 if (addr == 0) {
                     vPortFree(sym_addrs);
-                    return -1;
+                    return ELF_ERR_UNRESOLVED_SYMBOL;
                 }
                 sym_addrs[j] = addr;
             } else if (syms[j].st_shndx == SHN_ABS) {
@@ -201,17 +219,17 @@ static int loader_resolve_and_relocate(LoaderState_t *s)
             }
             default:
                 vPortFree(sym_addrs);
-                return -1;
+                return ELF_ERR_UNSUPPORTED_RELOC;
             }
         }
 
         vPortFree(sym_addrs);
     }
 
-    return 0;
+    return ELF_OK;
 }
 
-static uint32_t loader_find_entry(LoaderState_t *s)
+static uint32_t loader_find_symbol(loader_state_t *s, const char *name)
 {
     for (uint16_t i = 0; i < s->ehdr->e_shnum; i++) {
         if (s->shdrs[i].sh_type != SHT_SYMTAB)
@@ -225,7 +243,7 @@ static uint32_t loader_find_entry(LoaderState_t *s)
             (const char *) (s->elf_data + strtab_shdr->sh_offset);
 
         for (uint32_t j = 0; j < sym_count; j++) {
-            if (strcmp(strtab + syms[j].st_name, "app_main") == 0 &&
+            if (strcmp(strtab + syms[j].st_name, name) == 0 &&
                 syms[j].st_shndx != SHN_UNDEF) {
                 uint16_t sec = syms[j].st_shndx;
                 if (sec >= MAX_SECTIONS ||
@@ -239,38 +257,50 @@ static uint32_t loader_find_entry(LoaderState_t *s)
     return 0;
 }
 
-ElfLoaderResult_t elf_loader_load(const uint8_t *elf_data, uint32_t elf_size)
+elf_status_t elf_load(const uint8_t *elf_data,
+                      uint32_t elf_size,
+                      symbol_resolver_t resolver,
+                      elf_load_result_t *out)
 {
-    assert(elf_data);
-    assert(elf_size > 0);
+    if (!elf_data || !elf_size || !resolver || !out)
+        return ELF_ERR_NULL_ARG;
 
-    ElfLoaderResult_t result = {0};
-    LoaderState_t s = {0};
+    memset(out, 0, sizeof(*out));
+    loader_state_t s = {0};
     s.elf_data = elf_data;
     s.elf_size = elf_size;
+    s.resolver = resolver;
 
-    if (loader_validate(&s) != 0)
-        return result;
+    elf_status_t rc = loader_validate(&s);
+    if (rc != ELF_OK)
+        return rc;
 
-    if (loader_load_sections(&s) != 0)
-        return result;
+    rc = loader_load_sections(&s);
+    if (rc != ELF_OK)
+        return rc;
 
-    if (loader_resolve_and_relocate(&s) != 0) {
+    rc = loader_resolve_and_relocate(&s);
+    if (rc != ELF_OK) {
         vPortFree(s.loaded_mem);
-        return result;
+        return rc;
     }
 
-    __DSB();
-    __ISB();
+    __asm volatile("dsb" ::: "memory");
+    __asm volatile("isb" ::: "memory");
 
-    uint32_t entry = loader_find_entry(&s);
+    uint32_t entry = loader_find_symbol(&s, "app_main");
     if (entry == 0) {
         vPortFree(s.loaded_mem);
-        return result;
+        return ELF_ERR_NO_ENTRY;
     }
 
-    result.entry = (TaskFunction_t) (entry | 1);
-    result.memory = s.loaded_mem;
-    result.memory_size = s.loaded_size;
-    return result;
+    out->entry = (TaskFunction_t) (entry | 1);
+    out->memory = s.loaded_mem;
+    out->memory_size = s.loaded_size;
+
+    uint32_t cleanup = loader_find_symbol(&s, "app_cleanup");
+    if (cleanup != 0)
+        out->cleanup = (void (*)(void))(cleanup | 1);
+
+    return ELF_OK;
 }

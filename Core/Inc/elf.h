@@ -13,22 +13,11 @@
 #define ET_REL 1
 #define EM_ARM 0x28
 
-#define SHT_NULL 0
-#define SHT_PROGBITS 1
 #define SHT_SYMTAB 2
-#define SHT_STRTAB 3
 #define SHT_NOBITS 8
 #define SHT_REL 9
 
-#define SHF_WRITE 0x1
 #define SHF_ALLOC 0x2
-#define SHF_EXECINSTR 0x4
-
-#define STB_LOCAL 0
-#define STB_GLOBAL 1
-
-#define ELF32_ST_BIND(i) ((i) >> 4)
-#define ELF32_ST_TYPE(i) ((i) & 0xf)
 
 #define SHN_UNDEF 0
 #define SHN_ABS 0xFFF1
@@ -36,7 +25,6 @@
 #define ELF32_R_SYM(i) ((i) >> 8)
 #define ELF32_R_TYPE(i) ((i) & 0xFF)
 
-#define R_ARM_NONE 0
 #define R_ARM_ABS32 2
 #define R_ARM_THM_CALL 10
 #define R_ARM_THM_JUMP24 30

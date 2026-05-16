@@ -2,3 +2,4 @@ build/
 *.o
 .mxproject
 Core/Inc/*_elf.h
+.DS_Store

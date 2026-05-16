@@ -1,10 +1,27 @@
 #pragma once
 
 #include <stdint.h>
-#include "elf_loader.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
-#define MAX_DYNAMIC_TASKS 4
+#define MAX_TASKS 4
+#define TASK_NAME_LEN 16
+#define TASK_STACK_SIZE 256
 
-int task_manager_create(const char *name, const ElfLoaderResult_t *result);
-int task_manager_kill(int id);
-int task_manager_count(void);
+typedef struct {
+    int id;
+    char name[TASK_NAME_LEN];
+    uint8_t used;
+    uint32_t memory_size;
+    uint32_t stack_free;
+} task_info_t;
+
+typedef void (*task_cleanup_t)(void);
+
+int task_create(const char *name,
+                TaskFunction_t entry,
+                task_cleanup_t cleanup,
+                void *memory,
+                uint32_t memory_size);
+int task_kill(int id);
+int task_get_info(int id, task_info_t *info);

@@ -3,25 +3,26 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_DIR="$SCRIPT_DIR/apps"
+NPROC=$(sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 4)
 
 # Rebuild apps
 echo "=== Building apps ==="
 make -C "$APP_DIR" clean
-make -C "$APP_DIR"
+make -C "$APP_DIR" -j"$NPROC"
 
-# Regenerate embedded ELF headers
+# Regenerate embedded ELF headers from all .o files
 echo "=== Embedding apps ==="
 cd "$APP_DIR"
-for app in blink_green blink_orange; do
-    xxd -i ${app}.o | sed "s/${app}_o/${app}_elf/g; s/unsigned char/const unsigned char/; s/unsigned int/const unsigned int/" \
+for obj in *.o; do
+    app="${obj%.o}"
+    xxd -i "$obj" | sed "s/${app}_o/${app}_elf/g; s/unsigned char/const unsigned char/; s/unsigned int/const unsigned int/" \
         > "$SCRIPT_DIR/Core/Inc/${app}_elf.h"
-    echo "  ${app}.o → ${app}_elf.h"
+    echo "  ${obj} → ${app}_elf.h"
 done
 
 # Build firmware
 echo "=== Building firmware ==="
-make -C "$SCRIPT_DIR" clean
-make -C "$SCRIPT_DIR"
+make -C "$SCRIPT_DIR" -j"$NPROC"
 
 # Flash
 echo "=== Flashing ==="

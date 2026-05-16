@@ -12,3 +12,8 @@ void app_main(void *args)
         kernel_delay_ms(500);
     }
 }
+
+void app_cleanup(void)
+{
+    kernel_gpio_write(LED_GREEN, 0);
+}
