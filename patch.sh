@@ -54,4 +54,13 @@ else
     echo "[SKIP] LFN not found in ffconf.h"
 fi
 
+# 5. Add WiFi related source files
+if ! grep -q "Core/Src/wifi.c" "$MAKEFILE"; then
+    sed "${SED_FLAG[@]}" '/Core\/Src\/elf_rw.c/a\
+Core/Src/wifi.c \\' "$MAKEFILE"
+    echo "[OK] Added wifi.c to Makefile"
+else
+    echo "[SKIP] wifi.c already in Makefile"
+fi
+
 echo "Done. Now run: ./flash.sh"

@@ -33,6 +33,7 @@
 #include "myprintf.h"
 #include "File_Handling.h"
 #include "elf_rw.h"
+#include "wifi.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -54,6 +55,8 @@
 SPI_HandleTypeDef hspi2;
 
 UART_HandleTypeDef huart2;
+UART_HandleTypeDef huart3;
+DMA_HandleTypeDef hdma_usart3_rx;
 
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -69,8 +72,10 @@ FILELIST_FileTypeDef FileList; // records all files type, name, and ptr
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_SPI2_Init(void);
+static void MX_USART3_UART_Init(void);
 void StartDefaultTask(void *argument);
 
 /* USER CODE BEGIN PFP */
@@ -79,6 +84,117 @@ void StartDefaultTask(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+#if ELFFROMSD
+/**
+ * @brief Task: Load and execute ELF programs directly from SD card.
+ * Reads blink_green.o and blink_orange.o from SD, loads them into memory, and runs as FreeRTOS tasks.
+ */
+void test_task_manager_fromSD(void *args)
+{
+    /* Files order in SD card: hello.o, blink_green.o, blink_orange.o (Adjus this function refer to the data in SD card later, maybe change it into loop)*/
+    (void) args;
+    myprintf("[test_task_manager_fromSD] Running...\r\n");
+    
+    /* Check if at least 2 ELF files exist on SD card */
+    uint16_t elf_count = ELF_GetelfObjectNumber();
+    if(elf_count < 2)
+    {
+        myprintf("ERROR [test_task_manager_fromSD]: Need at least 2 ELF files on SD card\r\n");
+        HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
+        vTaskDelete(NULL);
+    }
+    
+    /* Load blink_green.o (second-to-last file) */
+    uint32_t green_idx = elf_count - 2;
+    char *green_filename = (char *)FileList.file[green_idx].name;
+    myprintf("Loading blink_green from SD card: %s\r\n", green_filename);
+    
+    uint8_t *green_data;
+    uint32_t green_size;
+    if(ELF_ReadComplete(green_filename, &green_data, &green_size) != ELF_ERROR_NONE)
+    {
+        myprintf("ERROR [test_task_manager_fromSD]: ELF_ReadComplete failed for green\r\n");
+        HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
+        vTaskDelete(NULL);
+    }
+    
+    myprintf("Loaded %u bytes, loading green into memory...\r\n", green_size);
+    ElfLoaderResult_t r_green = elf_loader_load((uint8_t *)green_data, green_size);
+    if (r_green.entry == NULL) {
+        myprintf("ERROR [test_task_manager_fromSD]: elf_loader_load failed for green\r\n");
+        HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
+        vPortFree(green_data);
+        vTaskDelete(NULL);
+    }
+    
+    int id_green = task_manager_create("green", &r_green);
+    if (id_green < 0) {
+        myprintf("ERROR [test_task_manager_fromSD]: task_manager_create failed for green\r\n");
+        HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
+        vPortFree(green_data);
+        vTaskDelete(NULL);
+    }
+    
+    myprintf("Green task created successfully (ID=%d)\r\n", id_green);
+    
+    /* Load blink_orange.o (last file) */
+    uint32_t orange_idx = elf_count - 1;
+    char *orange_filename = (char *)FileList.file[orange_idx].name;
+    myprintf("Loading blink_orange from SD card: %s\r\n", orange_filename);
+    
+    uint8_t *orange_data;
+    uint32_t orange_size;
+    if(ELF_ReadComplete(orange_filename, &orange_data, &orange_size) != ELF_ERROR_NONE)
+    {
+        myprintf("ERROR [test_task_manager_fromSD]: ELF_ReadComplete failed for orange\r\n");
+        HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
+        vPortFree(green_data);
+        vTaskDelete(NULL);
+    }
+    
+    myprintf("Loaded %u bytes, loading orange into memory...\r\n", orange_size);
+    ElfLoaderResult_t r_orange = elf_loader_load((uint8_t *)orange_data, orange_size);
+    if (r_orange.entry == NULL) {
+        myprintf("ERROR [test_task_manager_fromSD]: elf_loader_load failed for orange\r\n");
+        HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
+        vPortFree(green_data);
+        vPortFree(orange_data);
+        vTaskDelete(NULL);
+    }
+    
+    int id_orange = task_manager_create("orange", &r_orange);
+    if (id_orange < 0) {
+        myprintf("ERROR [test_task_manager_fromSD]: task_manager_create failed for orange\r\n");
+        HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
+        vPortFree(green_data);
+        vPortFree(orange_data);
+        vTaskDelete(NULL);
+    }
+    
+    myprintf("Orange task created successfully (ID=%d)\r\n", id_orange);
+    myprintf("Both SD tasks running for 3 seconds...\r\n");
+    
+    /* Let tasks run */
+    vTaskDelay(pdMS_TO_TICKS(3000));
+    
+    /* Kill green task */
+    myprintf("Killing green task...\r\n");
+    task_manager_kill(id_green);
+    vPortFree(green_data);
+    
+    vTaskDelay(pdMS_TO_TICKS(3000));
+    
+    /* Kill orange task */
+    myprintf("Killing orange task...\r\n");
+    task_manager_kill(id_orange);
+    vPortFree(orange_data);
+    
+    myprintf("SD task test complete\r\n");
+    HAL_GPIO_WritePin(GPIOD, LD6_Pin, GPIO_PIN_SET);
+    
+    vTaskDelete(NULL);
+}
+#else
 /**
  * @brief Task: Load and execute blink_green and blink_orange ELF programs from memory.
  * Creates two tasks, runs them for 3, 6 seconds each, then terminates.
@@ -121,6 +237,7 @@ static void test_task_manager(void *args)
 
     vTaskDelete(NULL);
 }
+#endif
 /**
  * @brief Task: Test SD card mount and basic connectivity.
  * Attempts to mount the SD card and reports status via UART and LED indicators.
@@ -296,114 +413,38 @@ void ELF_write_Test(void *pvParameters)
     
     vTaskDelete(NULL);
 }
-/**
- * @brief Task: Load and execute ELF programs directly from SD card.
- * Reads blink_green.o and blink_orange.o from SD, loads them into memory, and runs as FreeRTOS tasks.
- */
-void test_task_manager_fromSD(void *args)
-{
-    /* Files order in SD card: hello.o, blink_green.o, blink_orange.o (Adjus this function refer to the data in SD card later, maybe change it into loop)*/
-    (void) args;
-    myprintf("[test_task_manager_fromSD] Running...\r\n");
+void test_wifi_api(void *pvParameters)
+{   
+    // Wait for data from PC
+    ELF_GetelfObjectNumber();
+    vTaskDelay(100);
     
-    /* Check if at least 2 ELF files exist on SD card */
-    uint16_t elf_count = ELF_GetelfObjectNumber();
-    if(elf_count < 2)
+    int rsp = wifi_init();
+    
+    if (rsp == 0) {
+        myprintf("[test_wifi_api] Setup SUCCESS - response=%d\r\n", rsp);
+        HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_SET);  // green
+    } 
+    else {
+        myprintf("[test_wifi_api] Error: Setup FAILED or Response missing OK\r\n");
+        HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);  // red
+        vTaskDelete(NULL);
+    }
+    myprintf("[test_wifi_api] Prepare you sender ...\r\n");
+    vTaskDelay(100);
+    myprintf("[test_wifi_api] STM32 starts to receive data ...\r\n");
+    
+    while(1) // keep receiving data
     {
-        myprintf("ERROR [test_task_manager_fromSD]: Need at least 2 ELF files on SD card\r\n");
-        HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
-        vTaskDelete(NULL);
+        rsp = wifi_receive_file();
+        // Send response back to PC
+        if (rsp == 0) {
+            myprintf("[test_wifi_api] Receive data, and socket closed.\r\n");
+        } 
+        else {
+            myprintf("[test_wifi_api] Error: No data received\r\n");
+        }
     }
-    
-    /* Load blink_green.o (second-to-last file) */
-    uint32_t green_idx = elf_count - 2;
-    char *green_filename = (char *)FileList.file[green_idx].name;
-    myprintf("Loading blink_green from SD card: %s\r\n", green_filename);
-    
-    uint8_t *green_data;
-    uint32_t green_size;
-    if(ELF_ReadComplete(green_filename, &green_data, &green_size) != ELF_ERROR_NONE)
-    {
-        myprintf("ERROR [test_task_manager_fromSD]: ELF_ReadComplete failed for green\r\n");
-        HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
-        vTaskDelete(NULL);
-    }
-    
-    myprintf("Loaded %u bytes, loading green into memory...\r\n", green_size);
-    ElfLoaderResult_t r_green = elf_loader_load((uint8_t *)green_data, green_size);
-    if (r_green.entry == NULL) {
-        myprintf("ERROR [test_task_manager_fromSD]: elf_loader_load failed for green\r\n");
-        HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
-        vPortFree(green_data);
-        vTaskDelete(NULL);
-    }
-    
-    int id_green = task_manager_create("green", &r_green);
-    if (id_green < 0) {
-        myprintf("ERROR [test_task_manager_fromSD]: task_manager_create failed for green\r\n");
-        HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
-        vPortFree(green_data);
-        vTaskDelete(NULL);
-    }
-    
-    myprintf("Green task created successfully (ID=%d)\r\n", id_green);
-    
-    /* Load blink_orange.o (last file) */
-    uint32_t orange_idx = elf_count - 1;
-    char *orange_filename = (char *)FileList.file[orange_idx].name;
-    myprintf("Loading blink_orange from SD card: %s\r\n", orange_filename);
-    
-    uint8_t *orange_data;
-    uint32_t orange_size;
-    if(ELF_ReadComplete(orange_filename, &orange_data, &orange_size) != ELF_ERROR_NONE)
-    {
-        myprintf("ERROR [test_task_manager_fromSD]: ELF_ReadComplete failed for orange\r\n");
-        HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
-        vPortFree(green_data);
-        vTaskDelete(NULL);
-    }
-    
-    myprintf("Loaded %u bytes, loading orange into memory...\r\n", orange_size);
-    ElfLoaderResult_t r_orange = elf_loader_load((uint8_t *)orange_data, orange_size);
-    if (r_orange.entry == NULL) {
-        myprintf("ERROR [test_task_manager_fromSD]: elf_loader_load failed for orange\r\n");
-        HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
-        vPortFree(green_data);
-        vPortFree(orange_data);
-        vTaskDelete(NULL);
-    }
-    
-    int id_orange = task_manager_create("orange", &r_orange);
-    if (id_orange < 0) {
-        myprintf("ERROR [test_task_manager_fromSD]: task_manager_create failed for orange\r\n");
-        HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
-        vPortFree(green_data);
-        vPortFree(orange_data);
-        vTaskDelete(NULL);
-    }
-    
-    myprintf("Orange task created successfully (ID=%d)\r\n", id_orange);
-    myprintf("Both SD tasks running for 3 seconds...\r\n");
-    
-    /* Let tasks run */
-    vTaskDelay(pdMS_TO_TICKS(3000));
-    
-    /* Kill green task */
-    myprintf("Killing green task...\r\n");
-    task_manager_kill(id_green);
-    vPortFree(green_data);
-    
-    vTaskDelay(pdMS_TO_TICKS(3000));
-    
-    /* Kill orange task */
-    myprintf("Killing orange task...\r\n");
-    task_manager_kill(id_orange);
-    vPortFree(orange_data);
-    
-    myprintf("SD task test complete\r\n");
-    HAL_GPIO_WritePin(GPIOD, LD6_Pin, GPIO_PIN_SET);
-    
-    vTaskDelete(NULL);
 }
 /* USER CODE END 0 */
 
@@ -436,11 +477,23 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART2_UART_Init();
   MX_SPI2_Init();
   MX_FATFS_Init();
+  MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
+  // 1. Ensure power enable first
+  HAL_GPIO_WritePin(ESP8266_CH_PD_GPIO_Port, ESP8266_CH_PD_Pin, GPIO_PIN_SET); 
+  HAL_Delay(500); // Give power time to stabilize
 
+  // 2. Perform hardware reset
+  HAL_GPIO_WritePin(ESP8266_RST_GPIO_Port, ESP8266_RST_Pin, GPIO_PIN_RESET);
+  HAL_Delay(100); 
+  HAL_GPIO_WritePin(ESP8266_RST_GPIO_Port, ESP8266_RST_Pin, GPIO_PIN_SET);
+
+  // 3. Critical: Wait for ESP to complete boot messages (typically takes 2-3 seconds)
+  HAL_Delay(3000);
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -468,17 +521,21 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_THREADS */
     kernel_api_init();
+    myprintf("[main] Start mounting SD card ...\r\n");
     Mount_SD();
-    xTaskCreate(validate_SDCardFile, "validate_SDCardFile", 1024, NULL, 5, NULL); // test if elf data didn't change in SD card.
-    xTaskCreate(ELF_read_Test, "elf_read_test", 1024, NULL, 3, NULL); // do readelf and hexdump to elf files in SD card
+    // xTaskCreate(validate_SDCardFile, "validate_SDCardFile", 1024, NULL, 5, NULL); // test if elf data didn't change in SD card.
+    // xTaskCreate(ELF_read_Test, "elf_read_test", 1024, NULL, 3, NULL); // do readelf and hexdump to elf files in SD card
     // write test, use when uncomment it.
     // xTaskCreate(ELF_write_Test, "elf_write_test", 1024, NULL, 4, NULL); // read an elf to buffer -> write a new file stored in SD card.
 #if ELFFROMSD
-    xTaskCreate(test_task_manager_fromSD, "testFromSD", 512, NULL, 2, NULL); // load the new program reading from SD card
+    // xTaskCreate(test_task_manager_fromSD, "testFromSD", 512, NULL, 2, NULL); // load the new program reading from SD card
 #else
     // xTaskCreate(test_task_manager, "test", 512, NULL, 2, NULL); // load new program from .h
 #endif
     // xTaskCreate(SDCARD_Test, "SDCARD_Test", 256, NULL, 1, NULL);
+    
+    /* Test ESP - Dynamically send commands */
+    xTaskCreate(test_wifi_api, "test_wifi_api", 2048, NULL, 2, NULL);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
@@ -618,6 +675,55 @@ static void MX_USART2_UART_Init(void)
 }
 
 /**
+  * @brief USART3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART3_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART3_Init 0 */
+
+  /* USER CODE END USART3_Init 0 */
+
+  /* USER CODE BEGIN USART3_Init 1 */
+
+  /* USER CODE END USART3_Init 1 */
+  huart3.Instance = USART3;
+  huart3.Init.BaudRate = 115200;
+  huart3.Init.WordLength = UART_WORDLENGTH_8B;
+  huart3.Init.StopBits = UART_STOPBITS_1;
+  huart3.Init.Parity = UART_PARITY_NONE;
+  huart3.Init.Mode = UART_MODE_TX_RX;
+  huart3.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart3.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART3_Init 2 */
+
+  /* USER CODE END USART3_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Stream1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -644,7 +750,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(OTG_FS_PowerSwitchOn_GPIO_Port, OTG_FS_PowerSwitchOn_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(SD_CS_GPIO_Port, SD_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, SD_CS_Pin|ESP8266_CH_PD_Pin|ESP8266_RST_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, LD4_Pin|LD3_Pin|LD5_Pin|LD6_Pin
@@ -686,12 +792,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : SD_CS_Pin */
-  GPIO_InitStruct.Pin = SD_CS_Pin;
+  /*Configure GPIO pins : SD_CS_Pin ESP8266_CH_PD_Pin ESP8266_RST_Pin */
+  GPIO_InitStruct.Pin = SD_CS_Pin|ESP8266_CH_PD_Pin|ESP8266_RST_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(SD_CS_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pin : BOOT1_Pin */
   GPIO_InitStruct.Pin = BOOT1_Pin;
@@ -764,7 +870,24 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+/**
+  * @brief  Reception Event Callback (Rx event notification called after use of advanced reception service).
+  * @param  huart UART handle
+  * @param  Size  Number of data available in application reception buffer (indicates a position in
+  *               reception buffer until which, data are available)
+  * @retval None
+  */
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
+{
+    if (huart->Instance == USART3) {
+        // Call wifi.c function to handle the RX event
+        // This function manages all WiFi RX state flags
+        wifi_handle_uart_rx_event(Size);
+        
+        // Disable Half-Transfer interrupt to avoid double-trigger on large packets
+        __HAL_DMA_DISABLE_IT(&hdma_usart3_rx, DMA_IT_HT); 
+    }
+}
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
