@@ -10,7 +10,7 @@
 #include "sd_card.h"
 #include "shell.h"
 #include "task_manager.h"
-
+#include "wifi.h"
 static void cmd_help(int argc, char **argv)
 {
     (void) argc;
@@ -40,6 +40,14 @@ static void cmd_ls(int argc, char **argv)
     sd_list_apps(print_sd_app);
 }
 
+static void cmd_ll(int argc, char **argv)
+{
+    (void) argc;
+    (void) argv;
+
+    kernel_printf("Files in SD card:\r\n");
+    sd_list_apps(print_sd_app);
+}
 static void cmd_run(int argc, char **argv)
 {
     (void) argc;
@@ -131,13 +139,61 @@ static void cmd_exit(int argc, char **argv)
     NVIC_SystemReset();
 }
 
+static void cmd_wifi(int argc, char **argv)
+{
+    (void) argc;
+
+    const char *action = argv[1];
+    if(strcmp(action, "init") == 0) // Change to station mode, try to connect to wifi, get ip, set as tcp server
+    {
+        if(!wifi_init())
+            kernel_printf("Wifi initialized successfully.\r\n");
+        else
+            kernel_printf("Failed to initialize wifi for \"%s\":\"%s\".\r\n", WIFINAME, WIFIPASSWORD);
+    }
+    else if(strcmp(action, "rxfile") == 0)
+    {
+        if(!wifi_receive_file())
+            kernel_printf("Receive a file and store in SD card successfully.\r\n");
+        else
+            kernel_printf("Failed to receive the complete file.\r\n");
+    }
+    else if(strcmp(action, "rxmsg") == 0)
+    {
+        if(!wifi_receive_msg())
+            kernel_printf("Socket closed successfully.\r\n");
+        else
+            kernel_printf("Failed to receive the message.\r\n");
+    }
+    else
+    {
+        kernel_printf("Invalid action: %s.\r\n", action);
+        return;
+    }
+}
+static void cmd_rm(int argc, char **argv)
+{
+    (void) argc;
+
+    const char *filepath = argv[1];
+    int res = sd_rm_file(filepath);
+    if(res == 0)
+        kernel_printf("Remove %s successfully.\r\n", filepath);
+    else if(res == 1)
+        kernel_printf("WARNING: %s didn't exist in SD card.\r\n", filepath);
+    else
+        kernel_printf("Failed to remove %s.\r\n", filepath);
+}
 static const shell_cmd_t commands[] = {
     {"help", "Show this message", 0, cmd_help},
     {"ls", "List available apps", 0, cmd_ls},
+    {"ll", "List all files in SD card", 0, cmd_ll},
     {"run", "Run an app: run <name>", 1, cmd_run},
     {"ps", "List running tasks", 0, cmd_ps},
     {"kill", "Kill a task: kill <id>", 1, cmd_kill},
     {"exit", "Kill all tasks and reset", 0, cmd_exit},
+    {"wifi", "Use wifi: wifi <init>|<rxfile>|<rxmsg>", 1, cmd_wifi},
+    {"rm", "Remove file in SD card: rm <filepath>", 1, cmd_rm},
     {NULL, NULL, 0, NULL},
 };
 
