@@ -17,6 +17,8 @@ typedef enum {
     ELF_ERR_UNRESOLVED_SYMBOL,
     ELF_ERR_UNSUPPORTED_RELOC,
     ELF_ERR_NO_ENTRY,
+    ELF_ERR_OUT_OF_BOUNDS,
+    ELF_ERR_RELOC_RANGE,
 } elf_status_t;
 
 const char *elf_status_str(elf_status_t status);

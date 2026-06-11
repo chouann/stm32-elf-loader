@@ -3,7 +3,10 @@
 #include "FreeRTOS.h"
 #include "ff.h"
 
+#include "app_config.h"
 #include "sd_card.h"
+
+#define SD_MAX_FILE_SIZE APP_MAX_FILE_SIZE
 
 static FATFS fs;
 static uint8_t mounted;
@@ -27,6 +30,9 @@ int sd_read_file(const char *path, uint8_t **buf, uint32_t *size)
         return -1;
 
     uint32_t file_size = fno.fsize;
+    if (file_size == 0 || file_size > SD_MAX_FILE_SIZE)
+        return -1;
+
     uint8_t *data = pvPortMalloc(file_size);
     if (!data)
         return -1;
@@ -54,15 +60,16 @@ int sd_read_file(const char *path, uint8_t **buf, uint32_t *size)
 int sd_rm_file(const char *filepath)
 {
     FRESULT fr = f_unlink(filepath);
-    switch(fr) {
-        case FR_OK:
-            return 0;
-        case FR_NO_FILE:
-            return 1;
-        default:
-            return -1;
+    switch (fr) {
+    case FR_OK:
+        return 0;
+    case FR_NO_FILE:
+        return 1;
+    default:
+        return -1;
     }
 }
+
 int sd_list_apps(void (*callback)(const char *name, uint32_t size))
 {
     if (!mounted || !callback)

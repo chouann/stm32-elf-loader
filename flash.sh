@@ -5,20 +5,11 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_DIR="$SCRIPT_DIR/apps"
 NPROC=$(sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 4)
 
-# Rebuild apps
+# Rebuild apps and regenerate embedded ELF headers (apps/Makefile emits
+# static const ... __attribute__((aligned(4))) headers into Core/Inc/)
 echo "=== Building apps ==="
 make -C "$APP_DIR" clean
 make -C "$APP_DIR" -j"$NPROC"
-
-# Regenerate embedded ELF headers from all .o files
-echo "=== Embedding apps ==="
-cd "$APP_DIR"
-for obj in *.o; do
-    app="${obj%.o}"
-    xxd -i "$obj" | sed "s/${app}_o/${app}_elf/g; s/unsigned char/const unsigned char/; s/unsigned int/const unsigned int/" \
-        > "$SCRIPT_DIR/Core/Inc/${app}_elf.h"
-    echo "  ${obj} → ${app}_elf.h"
-done
 
 # Build firmware
 echo "=== Building firmware ==="

@@ -14,6 +14,7 @@
 #define EM_ARM 0x28
 
 #define SHT_SYMTAB 2
+#define SHT_STRTAB 3
 #define SHT_NOBITS 8
 #define SHT_REL 9
 

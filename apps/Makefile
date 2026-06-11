@@ -1,3 +1,6 @@
+# Demo apps must be built with this Makefile: -mlong-calls makes kernel
+# calls go through R_ARM_ABS32 relocations, the loader's tested path.
+# .o files built with other flags/toolchains are not guaranteed to load.
 CC = arm-none-eabi-gcc
 CFLAGS = -c -mthumb -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard \
          -mlong-calls -Os \
@@ -28,6 +31,6 @@ inspect: $(OBJS)
 	done
 
 clean:
-	rm -f $(OBJS)
+	rm -f $(OBJS) $(ELF_HEADERS)
 
 .PHONY: all inspect clean

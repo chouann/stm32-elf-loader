@@ -61,6 +61,9 @@ void shell_task(void *args)
 {
     (void) args;
 
+    if (kernel_io_start() != 0)
+        kernel_printf("[kernel] UART RX start failed, shell input dead\r\n");
+
     if (sd_init() == 0)
         kernel_printf("[kernel] SD card mounted\r\n");
     else
