@@ -51,6 +51,18 @@ int sd_read_file(const char *path, uint8_t **buf, uint32_t *size)
     return 0;
 }
 
+int sd_rm_file(const char *filepath)
+{
+    FRESULT fr = f_unlink(filepath);
+    switch(fr) {
+        case FR_OK:
+            return 0;
+        case FR_NO_FILE:
+            return 1;
+        default:
+            return -1;
+    }
+}
 int sd_list_apps(void (*callback)(const char *name, uint32_t size))
 {
     if (!mounted || !callback)
@@ -70,6 +82,29 @@ int sd_list_apps(void (*callback)(const char *name, uint32_t size))
         const char *ext = strrchr(fno.fname, '.');
         if (ext && (strcmp(ext, ".o") == 0 || strcmp(ext, ".O") == 0))
             callback(fno.fname, fno.fsize);
+    }
+
+    f_closedir(&dir);
+    return 0;
+}
+
+int sd_list_all(void (*callback)(const char *name, uint32_t size))
+{
+    if (!mounted || !callback)
+        return -1;
+
+    DIR dir;
+    FILINFO fno;
+
+    if (f_opendir(&dir, "") != FR_OK)
+        return -1;
+
+    while (f_readdir(&dir, &fno) == FR_OK && fno.fname[0] != '\0') {
+        if (fno.fattrib & (AM_DIR | AM_HID | AM_SYS))
+            continue;
+        if (fno.fname[0] == '.' || fno.fname[0] == '_')
+            continue;
+        callback(fno.fname, fno.fsize);
     }
 
     f_closedir(&dir);

@@ -9,7 +9,7 @@
 
 #include "kernel_api.h"
 #include "stm32f4xx_hal.h"
-
+#include "wifi.h" // in order to use wifi_dma_init()
 extern UART_HandleTypeDef huart2;
 
 #define PRINTF_BUF_SIZE 128
@@ -31,7 +31,10 @@ void kernel_uart_rx_isr(void)
     uart_start_rx();
     portYIELD_FROM_ISR(woken);
 }
-
+void kernel_uart_resume_rx(void)
+{ // used in HAL_UART_ErrorCallback
+    uart_start_rx();
+}
 void kernel_init(void)
 {
     uart_mutex = xSemaphoreCreateMutex();
@@ -39,6 +42,8 @@ void kernel_init(void)
     HAL_NVIC_SetPriority(USART2_IRQn, 6, 0);
     HAL_NVIC_EnableIRQ(USART2_IRQn);
     uart_start_rx();
+
+    wifi_dma_init();
 }
 
 typedef struct {

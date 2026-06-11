@@ -25,7 +25,8 @@ Core/Src/task_manager.c \\\
 Core/Src/shell.c \\\
 Core/Src/shell_cmds.c \\\
 Core/Src/app_registry.c \\\
-Core/Src/sd_card.c \\' "$MAKEFILE"
+Core/Src/sd_card.c \\\
+Core/Src/wifi.c \\' "$MAKEFILE"
     echo "[OK] Added custom source files to Makefile"
 else
     echo "[SKIP] Custom source files already in Makefile"

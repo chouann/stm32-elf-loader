@@ -85,6 +85,10 @@ void Error_Handler(void);
 #define BOOT1_GPIO_Port GPIOB
 #define CLK_IN_Pin GPIO_PIN_10
 #define CLK_IN_GPIO_Port GPIOB
+#define ESP8266_CH_PD_Pin GPIO_PIN_14
+#define ESP8266_CH_PD_GPIO_Port GPIOB
+#define ESP8266_RST_Pin GPIO_PIN_15
+#define ESP8266_RST_GPIO_Port GPIOB
 #define LD4_Pin GPIO_PIN_12
 #define LD4_GPIO_Port GPIOD
 #define LD3_Pin GPIO_PIN_13
