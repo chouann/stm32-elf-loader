@@ -763,8 +763,11 @@ static int serve_send(int conn_id,
 
     /* Clear noise accumulated since the last AT command so strstr(">")
      * only matches the real prompt from this CIPSEND.  The host is
-     * still waiting for our response, so no +IPD data is in flight. */
+     * still waiting for our response, so no +IPD data is in flight.
+     * The short delay lets the ESP8266 AT firmware finish processing
+     * any prior response before we send a new command. */
     wifi_reset_rx();
+    vTaskDelay(pdMS_TO_TICKS(10));
 
     xSemaphoreTake(wifi_uart_mutex, portMAX_DELAY);
     HAL_StatusTypeDef tx =

@@ -60,7 +60,7 @@ def board_command(cmd: str, timeout: float = 5.0) -> str:
 def _wait_ack(sock: socket.socket) -> str | None:
     """Wait for ACK or early ERR from the board. Returns None on ACK, error string otherwise."""
     buf = b""
-    deadline = time.time() + 10
+    deadline = time.time() + 5
     while time.time() < deadline:
         try:
             buf += sock.recv(256)
