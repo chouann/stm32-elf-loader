@@ -236,17 +236,20 @@ def api_upload():
 
 @app.route("/api/deploy", methods=["POST"])
 def api_deploy():
-    """Build apps/ and upload a specific .o to the board."""
-    body = request.get_json(silent=True) or {}
-    name = str(body.get("name", "")).strip()
-    if not name or not name.endswith(".c"):
-        return jsonify({"error": "name must end with .c"}), 400
-    if not SAFE_SRC_RE.match(name):
-        return jsonify({"error": "invalid filename"}), 400
-    target = name.removesuffix(".c") + ".o"
+    """Accept a .c file upload, save to apps/, build, and upload .o to board."""
+    f = request.files.get("file")
+    if not f or not f.filename:
+        return jsonify({"error": "no file"}), 400
+    basename = os.path.basename(f.filename)
+    if not SAFE_SRC_RE.match(basename):
+        return jsonify({"error": "must be a valid .c filename"}), 400
+    target = basename.removesuffix(".c") + ".o"
 
     apps_dir = os.path.join(os.path.dirname(__file__), "..", "apps")
     apps_dir = os.path.abspath(apps_dir)
+
+    src_path = os.path.join(apps_dir, basename)
+    f.save(src_path)
 
     result = subprocess.run(
         ["make", "-j4", target],

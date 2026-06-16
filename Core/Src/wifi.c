@@ -746,10 +746,11 @@ static int serve_at_wait(const char *token,
     return -1;
 }
 
-/* Send data on a serve connection via AT+CIPSEND without clearing the
- * RX stream.  If save_buf is non-NULL, any non-token data received
- * during the SEND OK wait (typically a racing +IPD frame) is preserved
- * into save_buf so the file-transfer loop can still parse it. */
+/* Send data on a serve connection via AT+CIPSEND.  Clears accumulated
+ * noise (CONNECT/CLOSED, old AT echoes) before sending so the prompt
+ * search doesn't false-match on stale '>' bytes.  If save_buf is
+ * non-NULL, any non-token data received during the SEND OK wait
+ * (typically a racing +IPD frame) is preserved into save_buf. */
 static int serve_send(int conn_id,
                       const char *data,
                       uint32_t len,
@@ -759,6 +760,11 @@ static int serve_send(int conn_id,
     char cmd[32];
     snprintf(cmd, sizeof(cmd), "AT+CIPSEND=%d,%lu\r\n", conn_id,
              (unsigned long) len);
+
+    /* Clear noise accumulated since the last AT command so strstr(">")
+     * only matches the real prompt from this CIPSEND.  The host is
+     * still waiting for our response, so no +IPD data is in flight. */
+    wifi_reset_rx();
 
     xSemaphoreTake(wifi_uart_mutex, portMAX_DELAY);
     HAL_StatusTypeDef tx =

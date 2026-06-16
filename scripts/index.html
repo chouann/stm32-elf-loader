@@ -1,263 +1,482 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RTOS Final Project</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
-  header { background: #1e293b; padding: 1.5rem 2rem; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 1rem; }
-  header h1 { font-size: 1.5rem; font-weight: 700; }
-  header .chip { background: #22c55e; color: #000; font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 999px; }
-  .container { max-width: 960px; margin: 0 auto; padding: 2rem; }
-  h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RTOS Final Project</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-  /* App cards */
-  .apps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 2.5rem; }
-  .app-card { background: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; transition: border-color 0.15s; }
-  .app-card:hover { border-color: #60a5fa; }
-  .app-name { font-size: 1.1rem; font-weight: 600; }
-  .app-meta { font-size: 0.8rem; color: #64748b; display: flex; gap: 1rem; }
-  .app-meta .badge { background: #334155; padding: 0.15rem 0.5rem; border-radius: 0.25rem; }
-  .app-actions { display: flex; gap: 0.5rem; margin-top: auto; }
-  .btn { border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
-  .btn-run { background: #3b82f6; color: #fff; }
-  .btn-run:hover { background: #2563eb; }
-  .btn-run:disabled { background: #475569; cursor: not-allowed; }
-  .btn-rm { background: #ef4444; color: #fff; }
-  .btn-rm:hover { background: #dc2626; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
 
-  /* Task table */
-  .task-section { margin-bottom: 2.5rem; }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 0.6rem 1rem; }
-  th { color: #64748b; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #334155; }
-  td { border-bottom: 1px solid #1e293b; font-size: 0.9rem; }
-  .btn-kill { background: #ef4444; color: #fff; padding: 0.3rem 0.8rem; font-size: 0.8rem; border-radius: 0.375rem; }
-  .btn-kill:hover { background: #dc2626; }
-  .empty-row td { color: #475569; font-style: italic; }
+    header {
+      background: #1e293b;
+      padding: 1.5rem 2rem;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
 
-  /* Upload */
-  .upload-section { background: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; padding: 1.5rem; }
-  .upload-row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
-  .upload-row input[type=file] { font-size: 0.85rem; }
-  .btn-upload { background: #8b5cf6; color: #fff; }
-  .btn-upload:hover { background: #7c3aed; }
-  .status { margin-top: 0.75rem; font-size: 0.85rem; color: #94a3b8; min-height: 1.2em; }
-  .status.error { color: #f87171; }
-  .status.ok { color: #4ade80; }
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
 
-  /* Deploy */
-  .deploy-section { background: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; padding: 1.5rem; margin-top: 1rem; }
-  .deploy-row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
-  .deploy-row input[type=text] { background: #0f172a; border: 1px solid #334155; color: #e2e8f0; padding: 0.5rem 0.75rem; border-radius: 0.5rem; font-size: 0.85rem; width: 200px; }
-  .btn-deploy { background: #f59e0b; color: #000; }
-  .btn-deploy:hover { background: #d97706; }
-</style>
+    header .chip {
+      background: #22c55e;
+      color: #000;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* App cards */
+    .apps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .app-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      transition: border-color 0.15s;
+    }
+
+    .app-card:hover {
+      border-color: #60a5fa;
+    }
+
+    .app-name {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .app-meta {
+      font-size: 0.8rem;
+      color: #64748b;
+      display: flex;
+      gap: 1rem;
+    }
+
+    .app-meta .badge {
+      background: #334155;
+      padding: 0.15rem 0.5rem;
+      border-radius: 0.25rem;
+    }
+
+    .app-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: auto;
+    }
+
+    .btn {
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn-run {
+      background: #3b82f6;
+      color: #fff;
+    }
+
+    .btn-run:hover {
+      background: #2563eb;
+    }
+
+    .btn-run:disabled {
+      background: #475569;
+      cursor: not-allowed;
+    }
+
+    .btn-rm {
+      background: #ef4444;
+      color: #fff;
+    }
+
+    .btn-rm:hover {
+      background: #dc2626;
+    }
+
+    /* Task table */
+    .task-section {
+      margin-bottom: 2.5rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 0.6rem 1rem;
+    }
+
+    th {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #334155;
+    }
+
+    td {
+      border-bottom: 1px solid #1e293b;
+      font-size: 0.9rem;
+    }
+
+    .btn-kill {
+      background: #ef4444;
+      color: #fff;
+      padding: 0.3rem 0.8rem;
+      font-size: 0.8rem;
+      border-radius: 0.375rem;
+    }
+
+    .btn-kill:hover {
+      background: #dc2626;
+    }
+
+    .empty-row td {
+      color: #475569;
+      font-style: italic;
+    }
+
+    /* Upload */
+    .upload-section {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+    }
+
+    .upload-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .upload-row input[type=file] {
+      font-size: 0.85rem;
+    }
+
+    .btn-upload {
+      background: #8b5cf6;
+      color: #fff;
+    }
+
+    .btn-upload:hover {
+      background: #7c3aed;
+    }
+
+    .status {
+      margin-top: 0.75rem;
+      font-size: 0.85rem;
+      color: #94a3b8;
+      min-height: 1.2em;
+    }
+
+    .status.error {
+      color: #f87171;
+    }
+
+    .status.ok {
+      color: #4ade80;
+    }
+
+    /* Deploy */
+    .deploy-section {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      margin-top: 1rem;
+    }
+
+    .deploy-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .deploy-row input[type=text] {
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.5rem;
+      font-size: 0.85rem;
+      width: 200px;
+    }
+
+    .btn-deploy {
+      background: #f59e0b;
+      color: #000;
+    }
+
+    .btn-deploy:hover {
+      background: #d97706;
+    }
+  </style>
 </head>
+
 <body>
 
-<header>
-  <h1>RTOS Final Project</h1>
-  <span class="chip" id="status-chip">CONNECTING</span>
-</header>
+  <header>
+    <h1>RTOS Final Project</h1>
+    <span class="chip" id="status-chip">CONNECTING</span>
+  </header>
 
-<div class="container">
+  <div class="container">
 
-  <section>
-    <h2>Available Apps</h2>
-    <div class="apps-grid" id="apps-grid"></div>
-  </section>
+    <section>
+      <h2>Available Apps</h2>
+      <div class="apps-grid" id="apps-grid"></div>
+    </section>
 
-  <section class="task-section">
-    <h2>Running Tasks</h2>
-    <table>
-      <thead><tr><th>ID</th><th>Name</th><th>Memory</th><th>Stack</th><th></th></tr></thead>
-      <tbody id="task-body"><tr class="empty-row"><td colspan="5">No tasks running</td></tr></tbody>
-    </table>
-  </section>
+    <section class="task-section">
+      <h2>Running Tasks</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Memory</th>
+            <th>Stack</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="task-body">
+          <tr class="empty-row">
+            <td colspan="5">No tasks running</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
 
-  <section class="upload-section">
-    <h2>Upload .o File</h2>
-    <div class="upload-row">
-      <input type="file" id="upload-file" accept=".o">
-      <button class="btn btn-upload" onclick="doUpload()">Upload</button>
-    </div>
-    <div class="status" id="upload-status"></div>
-  </section>
+    <section class="upload-section">
+      <h2>Upload .o File</h2>
+      <div class="upload-row">
+        <input type="file" id="upload-file" accept=".o">
+        <button class="btn btn-upload" onclick="doUpload()">Upload</button>
+      </div>
+      <div class="status" id="upload-status"></div>
+    </section>
 
-  <section class="deploy-section">
-    <h2>Build &amp; Deploy</h2>
-    <div class="deploy-row">
-      <input type="text" id="deploy-name" placeholder="e.g. ledshow.c">
-      <button class="btn btn-deploy" onclick="doDeploy()">Deploy</button>
-    </div>
-    <div class="status" id="deploy-status"></div>
-  </section>
+    <section class="deploy-section">
+      <h2>Build &amp; Deploy .c</h2>
+      <div class="deploy-row">
+        <input type="file" id="deploy-file" accept=".c">
+        <button class="btn btn-deploy" onclick="doDeploy()">Deploy</button>
+      </div>
+      <div class="status" id="deploy-status"></div>
+    </section>
 
-</div>
+  </div>
 
-<script>
-const API = '';
-function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  <script>
+    const API = '';
 
-async function api(path, opts) {
-  const r = await fetch(API + path, opts);
-  return r.json();
-}
-
-// ---- Apps ----------------------------------------------------------
-
-function makeAppCard(a) {
-  const card = document.createElement('div');
-  card.className = 'app-card';
-
-  const name = document.createElement('div');
-  name.className = 'app-name';
-  name.textContent = a.name;
-  card.appendChild(name);
-
-  const meta = document.createElement('div');
-  meta.className = 'app-meta';
-  const badge = document.createElement('span');
-  badge.className = 'badge';
-  badge.textContent = a.source;
-  meta.appendChild(badge);
-  const size = document.createElement('span');
-  size.textContent = a.size + ' bytes';
-  meta.appendChild(size);
-  card.appendChild(meta);
-
-  const actions = document.createElement('div');
-  actions.className = 'app-actions';
-  const runBtn = document.createElement('button');
-  runBtn.className = 'btn btn-run';
-  runBtn.textContent = 'Run';
-  runBtn.addEventListener('click', () => doRun(a.name));
-  actions.appendChild(runBtn);
-  if (a.source === 'sd') {
-    const rmBtn = document.createElement('button');
-    rmBtn.className = 'btn btn-rm';
-    rmBtn.textContent = 'Delete';
-    rmBtn.addEventListener('click', () => doRm(a.name));
-    actions.appendChild(rmBtn);
-  }
-  card.appendChild(actions);
-  return card;
-}
-
-async function loadApps() {
-  try {
-    const apps = (await api('/api/apps')).filter(a => a.source === 'sd');
-    const grid = document.getElementById('apps-grid');
-    grid.innerHTML = '';
-    apps.forEach(a => grid.appendChild(makeAppCard(a)));
-    document.getElementById('status-chip').textContent = 'ONLINE';
-    document.getElementById('status-chip').style.background = '#22c55e';
-  } catch {
-    document.getElementById('status-chip').textContent = 'OFFLINE';
-    document.getElementById('status-chip').style.background = '#ef4444';
-  }
-}
-
-// ---- Tasks ---------------------------------------------------------
-
-async function loadTasks() {
-  try {
-    const tasks = await api('/api/ps');
-    const tbody = document.getElementById('task-body');
-    if (tasks.length === 0) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No tasks running</td></tr>';
-      return;
+    async function api(path, opts) {
+      const r = await fetch(API + path, opts);
+      return r.json();
     }
-    tbody.innerHTML = '';
-    tasks.forEach(t => {
-      const tr = document.createElement('tr');
-      const cells = [t.id, t.name, t.memory + ' B', t.stack];
-      cells.forEach(v => { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); });
-      const td = document.createElement('td');
-      const btn = document.createElement('button');
-      btn.className = 'btn btn-kill';
-      btn.textContent = 'Kill';
-      btn.addEventListener('click', () => doKill(t.id));
-      td.appendChild(btn);
-      tr.appendChild(td);
-      tbody.appendChild(tr);
-    });
-  } catch { /* ignore */ }
-}
 
-// ---- Actions -------------------------------------------------------
+    // ---- Apps ----------------------------------------------------------
 
-async function doRun(name) {
-  const r = await api('/api/run', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({name}),
-  });
-  if (r.ok) loadTasks();
-  else alert('Run failed: ' + (r.error || 'unknown'));
-}
+    function makeAppCard(a) {
+      const card = document.createElement('div');
+      card.className = 'app-card';
 
-async function doRm(name) {
-  const r = await api('/api/rm', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({name}),
-  });
-  if (r.ok) loadApps();
-  else alert('Delete failed: ' + (r.error || 'unknown'));
-}
+      const name = document.createElement('div');
+      name.className = 'app-name';
+      name.textContent = a.name;
+      card.appendChild(name);
 
-async function doKill(id) {
-  await api('/api/kill', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({id}),
-  });
-  loadTasks();
-}
+      const meta = document.createElement('div');
+      meta.className = 'app-meta';
+      const badge = document.createElement('span');
+      badge.className = 'badge';
+      badge.textContent = a.source;
+      meta.appendChild(badge);
+      const size = document.createElement('span');
+      size.textContent = a.size + ' bytes';
+      meta.appendChild(size);
+      card.appendChild(meta);
 
-async function doUpload() {
-  const input = document.getElementById('upload-file');
-  const status = document.getElementById('upload-status');
-  if (!input.files.length) { status.textContent = 'Select a file first'; status.className = 'status error'; return; }
-  const file = input.files[0];
-  status.textContent = 'Uploading...'; status.className = 'status';
+      const actions = document.createElement('div');
+      actions.className = 'app-actions';
+      const runBtn = document.createElement('button');
+      runBtn.className = 'btn btn-run';
+      runBtn.textContent = 'Run';
+      runBtn.addEventListener('click', () => doRun(a.name));
+      actions.appendChild(runBtn);
+      if (a.source === 'sd') {
+        const rmBtn = document.createElement('button');
+        rmBtn.className = 'btn btn-rm';
+        rmBtn.textContent = 'Delete';
+        rmBtn.addEventListener('click', () => doRm(a.name));
+        actions.appendChild(rmBtn);
+      }
+      card.appendChild(actions);
+      return card;
+    }
 
-  const form = new FormData();
-  form.append('file', file);
+    async function loadApps() {
+      try {
+        const apps = (await api('/api/apps')).filter(a => a.source === 'sd');
+        const grid = document.getElementById('apps-grid');
+        grid.innerHTML = '';
+        apps.forEach(a => grid.appendChild(makeAppCard(a)));
+        document.getElementById('status-chip').textContent = 'ONLINE';
+        document.getElementById('status-chip').style.background = '#22c55e';
+      } catch {
+        document.getElementById('status-chip').textContent = 'OFFLINE';
+        document.getElementById('status-chip').style.background = '#ef4444';
+      }
+    }
 
-  try {
-    const r = await api('/api/upload', {method: 'POST', body: form});
-    if (r.ok) { status.textContent = 'Upload OK'; status.className = 'status ok'; loadApps(); }
-    else { status.textContent = r.error || 'Upload failed'; status.className = 'status error'; }
-  } catch (e) { status.textContent = e.message; status.className = 'status error'; }
-}
+    // ---- Tasks ---------------------------------------------------------
 
-async function doDeploy() {
-  const name = document.getElementById('deploy-name').value.trim();
-  const status = document.getElementById('deploy-status');
-  if (!name) { status.textContent = 'Enter a filename'; status.className = 'status error'; return; }
-  status.textContent = 'Building & uploading...'; status.className = 'status';
+    async function loadTasks() {
+      try {
+        const tasks = await api('/api/ps');
+        const tbody = document.getElementById('task-body');
+        if (tasks.length === 0) {
+          tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No tasks running</td></tr>';
+          return;
+        }
+        tbody.innerHTML = '';
+        tasks.forEach(t => {
+          const tr = document.createElement('tr');
+          const cells = [t.id, t.name, t.memory + ' B', t.stack];
+          cells.forEach(v => { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); });
+          const td = document.createElement('td');
+          const btn = document.createElement('button');
+          btn.className = 'btn btn-kill';
+          btn.textContent = 'Kill';
+          btn.addEventListener('click', () => doKill(t.id));
+          td.appendChild(btn);
+          tr.appendChild(td);
+          tbody.appendChild(tr);
+        });
+      } catch { /* ignore */ }
+    }
 
-  try {
-    const r = await api('/api/deploy', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({name}),
-    });
-    if (r.ok) { status.textContent = 'Deploy OK'; status.className = 'status ok'; loadApps(); }
-    else { status.textContent = r.error || 'Deploy failed'; status.className = 'status error'; }
-  } catch (e) { status.textContent = e.message; status.className = 'status error'; }
-}
+    // ---- Actions -------------------------------------------------------
 
-// ---- Init ----------------------------------------------------------
+    async function doRun(name) {
+      const r = await api('/api/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      if (r.ok) loadTasks();
+      else alert('Run failed: ' + (r.error || 'unknown'));
+    }
 
-loadApps();
-loadTasks();
-</script>
+    async function doRm(name) {
+      const r = await api('/api/rm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      if (r.ok) loadApps();
+      else alert('Delete failed: ' + (r.error || 'unknown'));
+    }
+
+    async function doKill(id) {
+      await api('/api/kill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      loadTasks();
+    }
+
+    async function doUpload() {
+      const input = document.getElementById('upload-file');
+      const status = document.getElementById('upload-status');
+      if (!input.files.length) { status.textContent = 'Select a file first'; status.className = 'status error'; return; }
+      const file = input.files[0];
+      status.textContent = 'Uploading...'; status.className = 'status';
+
+      const form = new FormData();
+      form.append('file', file);
+
+      try {
+        const r = await api('/api/upload', { method: 'POST', body: form });
+        if (r.ok) { status.textContent = 'Upload OK'; status.className = 'status ok'; loadApps(); }
+        else { status.textContent = r.error || 'Upload failed'; status.className = 'status error'; }
+      } catch (e) { status.textContent = e.message; status.className = 'status error'; }
+    }
+
+    async function doDeploy() {
+      const input = document.getElementById('deploy-file');
+      const status = document.getElementById('deploy-status');
+      if (!input.files.length) { status.textContent = 'Select a .c file first'; status.className = 'status error'; return; }
+      const file = input.files[0];
+      status.textContent = 'Building & uploading...'; status.className = 'status';
+
+      const form = new FormData();
+      form.append('file', file);
+
+      try {
+        const r = await api('/api/deploy', { method: 'POST', body: form });
+        if (r.ok) { status.textContent = 'Deploy OK'; status.className = 'status ok'; loadApps(); }
+        else { status.textContent = r.error || 'Deploy failed'; status.className = 'status error'; }
+      } catch (e) { status.textContent = e.message; status.className = 'status error'; }
+    }
+
+    // ---- Init ----------------------------------------------------------
+
+    loadApps();
+    loadTasks();
+  </script>
 
 </body>
+
 </html>
