@@ -242,14 +242,8 @@
       flex-wrap: wrap;
     }
 
-    .deploy-row input[type=text] {
-      background: #0f172a;
-      border: 1px solid #334155;
-      color: #e2e8f0;
-      padding: 0.5rem 0.75rem;
-      border-radius: 0.5rem;
+    .deploy-row input[type=file] {
       font-size: 0.85rem;
-      width: 200px;
     }
 
     .btn-deploy {
@@ -418,32 +412,38 @@
     // ---- Actions -------------------------------------------------------
 
     async function doRun(name) {
-      const r = await api('/api/run', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
-      });
-      if (r.ok) loadTasks();
-      else alert('Run failed: ' + (r.error || 'unknown'));
+      try {
+        const r = await api('/api/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name }),
+        });
+        if (r.ok) loadTasks();
+        else alert('Run failed: ' + (r.error || 'unknown'));
+      } catch (e) { alert('Run error: ' + e.message); }
     }
 
     async function doRm(name) {
-      const r = await api('/api/rm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
-      });
-      if (r.ok) loadApps();
-      else alert('Delete failed: ' + (r.error || 'unknown'));
+      try {
+        const r = await api('/api/rm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name }),
+        });
+        if (r.ok) loadApps();
+        else alert('Delete failed: ' + (r.error || 'unknown'));
+      } catch (e) { alert('Delete error: ' + e.message); }
     }
 
     async function doKill(id) {
-      await api('/api/kill', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
-      });
-      loadTasks();
+      try {
+        await api('/api/kill', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id }),
+        });
+        loadTasks();
+      } catch (e) { alert('Kill error: ' + e.message); }
     }
 
     async function doUpload() {
