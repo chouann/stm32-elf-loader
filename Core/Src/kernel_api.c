@@ -148,6 +148,16 @@ int kernel_getchar(void)
     return -1;
 }
 
+int kernel_getchar_nonblock(void)
+{
+    if (!rx_stream)
+        return -1;
+    uint8_t ch;
+    if (xStreamBufferReceive(rx_stream, &ch, 1, 0) == 1)
+        return ch;
+    return -1;
+}
+
 void kernel_gpio_write(uint16_t pin, uint8_t val)
 {
     HAL_GPIO_WritePin(GPIOD, pin, val ? GPIO_PIN_SET : GPIO_PIN_RESET);

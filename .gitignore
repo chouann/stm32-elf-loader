@@ -3,3 +3,5 @@ build/
 .mxproject
 Core/Inc/*_elf.h
 .DS_Store
+.venv/
+__pycache__/

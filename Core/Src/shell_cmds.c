@@ -146,20 +146,24 @@ static void cmd_wifi(int argc, char **argv)
     (void) argc;
 
     const char *action = argv[1];
-    if (strcmp(action, "init") == 0)  // Change to station mode, try to connect
-                                      // to wifi, get ip, set as tcp server
-    {
-        if (!wifi_init())
+    if (strcmp(action, "init") == 0) {
+        const char *ssid = argc >= 3 ? argv[2] : NULL;
+        const char *pass = argc >= 4 ? argv[3] : NULL;
+        if (!wifi_init(ssid, pass))
             kernel_printf("Wifi initialized successfully.\r\n");
         else
-            kernel_printf("Failed to initialize wifi for \"%s\".\r\n",
-                          WIFI_SSID);
+            kernel_printf("Failed to initialize wifi.\r\n");
     } else if (strcmp(action, "rxfile") == 0) {
         if (!wifi_receive_file())
             kernel_printf(
                 "Receive a file and store in SD card successfully.\r\n");
         else
             kernel_printf("Failed to receive the complete file.\r\n");
+    } else if (strcmp(action, "serve") == 0) {
+        if (wifi_serve() == 0)
+            kernel_printf("Serve stopped.\r\n");
+        else
+            kernel_printf("Serve failed.\r\n");
     } else if (strcmp(action, "rxmsg") == 0) {
         if (!wifi_receive_msg())
             kernel_printf("Socket closed successfully.\r\n");
@@ -193,7 +197,7 @@ static const shell_cmd_t commands[] = {
     {"ps", "List running tasks", 0, cmd_ps},
     {"kill", "Kill a task: kill <id>", 1, cmd_kill},
     {"exit", "Kill all tasks and reset", 0, cmd_exit},
-    {"wifi", "Use wifi: wifi <init>|<rxfile>|<rxmsg>", 1, cmd_wifi},
+    {"wifi", "wifi init [SSID PASS] | serve | rxfile | rxmsg", 1, cmd_wifi},
     {"rm", "Remove file in SD card: rm <filepath>", 1, cmd_rm},
     {NULL, NULL, 0, NULL},
 };
